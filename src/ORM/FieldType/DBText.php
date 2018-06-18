@@ -116,9 +116,10 @@ class DBText extends DBString
      *
      * @param int $maxWords
      * @param string $add
+     * @param int $maxCharacters
      * @return string
      */
-    public function Summary($maxWords = 50, $add = '...')
+    public function Summary($maxWords = 50, $add = '...', $maxCharacters = 225)
     {
         // Get plain-text version
         $value = $this->Plain();
@@ -127,10 +128,15 @@ class DBText extends DBString
         }
 
         // Split on sentences (don't remove period)
-        $sentences = array_filter(array_map(function ($str) {
+        $sentences = array_values(array_filter(array_map(function ($str) {
             return trim($str);
-        }, preg_split('@(?<=\.)@', $value)));
-        $wordCount = count(preg_split('#\s+#u', $sentences[0]));
+        }, preg_split('/(?<=\.|。|\n)/u', $value)),
+            function ($val) {
+                return preg_replace("/\s+/u", "", $val);
+            }
+        ));
+
+        $wordCount = count(preg_split('/\W+/', $sentences[0]));
 
         // if the first sentence is too long, show only the first $maxWords words
         if ($wordCount > $maxWords) {
@@ -143,10 +149,16 @@ class DBText extends DBString
             // Add next sentence
             $result .= ' ' . array_shift($sentences);
 
+            // we've hit our limit without knowing what the word count was.
+            if(mb_strlen($result, "utf-8") > $maxCharacters){
+                return $result . $add;
+            }
+
             // If more sentences to process, count number of words
             if ($sentences) {
-                $wordCount += count(preg_split('#\s+#u', $sentences[0]));
+                $wordCount += count(preg_split('/\W+/u', $sentences[0]));
             }
+
         } while ($wordCount < $maxWords && $sentences && trim($sentences[0]));
 
         return trim($result);
@@ -198,7 +210,7 @@ class DBText extends DBString
         $keywords = Convert::raw2xml($keywords);
 
         // Find the search string
-        $position = empty($keywords) ? 0 : (int) mb_stripos($text, $keywords);
+        $position = empty($keywords) ? 0 : (int)mb_stripos($text, $keywords);
 
         // We want to search string to be in the middle of our block to give it some context
         $position = max(0, $position - ($characters / 2));
@@ -206,8 +218,8 @@ class DBText extends DBString
         if ($position > 0) {
             // We don't want to start mid-word
             $position = max(
-                (int) mb_strrpos(substr($text, 0, $position), ' '),
-                (int) mb_strrpos(substr($text, 0, $position), "\n")
+                (int)mb_strrpos(substr($text, 0, $position), ' '),
+                (int)mb_strrpos(substr($text, 0, $position), "\n")
             );
         }
 
