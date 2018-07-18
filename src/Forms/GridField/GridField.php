@@ -194,6 +194,20 @@ class GridField extends FormField
     }
 
     /**
+     * Custom Readonly transformations to enable history and carousel to work together.
+     *
+     * @return GridField
+     */
+    public function performReadonlyTransformation(){
+        $copy = clone $this;
+        $copy->getConfig()
+            ->removeComponentsByType(GridFieldDeleteAction::class)
+            ->removeComponentsByType(GridFieldAddExistingAutocompleter::class)
+            ->removeComponentsByType(GridFieldAddNewButton::class);
+        return $copy;
+    }
+
+    /**
      * @return GridFieldConfig
      */
     public function getConfig()
