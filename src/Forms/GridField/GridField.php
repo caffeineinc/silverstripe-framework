@@ -194,6 +194,41 @@ class GridField extends FormField
     }
 
     /**
+     * Custom Readonly transformation to remove actions which shouldn't be present for a readonly state.
+     *
+     * @return GridField
+     */
+    public function performReadonlyTransformation()
+    {
+        $copy = clone $this;
+        $copy->setReadonly(true);
+
+        // Remove all components which are Action providers. We don't need these for a readonly view.
+        foreach ($this->getConfig()->getComponents() as $component) {
+            // Data manipulators are also Action Providers, but don't affect state, so these are ok.
+            if ($component instanceof GridField_ActionProvider && !($component instanceof GridField_DataManipulator)) {
+                $copy->getConfig()->removeComponent($component);
+            }
+        }
+
+        // GridFieldAddNewButton shouldn't display either, but since its augmenting HTML directly, we just remove it.
+        // @todo this should implement GridField_ActionProvider too
+        $copy->getConfig()->removeComponentsByType(GridFieldAddNewButton::class);
+        return $copy;
+    }
+
+    /**
+     * Disabling the gridfield should have the same affect as making it readonly (removing all action items).
+     *
+     * @return GridField
+     */
+    public function performDisabledTransformation(){
+        parent::performDisabledTransformation();
+
+        return $this->performReadonlyTransformation();
+    }
+
+    /**
      * @return GridFieldConfig
      */
     public function getConfig()
