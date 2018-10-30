@@ -10,7 +10,6 @@ use SilverStripe\View\Embed\EmbedResource;
 use SilverStripe\View\HTML;
 use SilverStripe\View\Parsers\ShortcodeHandler;
 use Embed\Adapters\Adapter;
-use Embed\Embed;
 use SilverStripe\View\Parsers\ShortcodeParser;
 
 /**
@@ -82,6 +81,9 @@ class EmbedShortcodeProvider implements ShortcodeHandler
         }
 
         if ($dispatcher) {
+            $embed->setDispatcher($dispatcher);
+        } elseif (Injector::inst()->has(DispatcherInterface::class)) {
+            $dispatcher = Injector::inst()->get(DispatcherInterface::class);
             $embed->setDispatcher($dispatcher);
         }
 

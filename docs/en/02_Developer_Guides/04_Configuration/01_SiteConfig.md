@@ -24,6 +24,8 @@ To access variables in the PHP:
 
 
 ```php
+use Silverstripe\SiteConfig\SiteConfig;
+
 $config = SiteConfig::current_site_config(); 
 
 echo $config->Title;
@@ -35,7 +37,7 @@ echo $config->Title;
 
 To extend the options available in the panel, define your own fields via a [DataExtension](api:SilverStripe\ORM\DataExtension).
 
-**mysite/code/extensions/CustomSiteConfig.php**
+**app/code/extensions/CustomSiteConfig.php**
 
 
 ```php
@@ -61,7 +63,7 @@ class CustomSiteConfig extends DataExtension
 
 Then activate the extension.
 
-**mysite/_config/app.yml**
+**app/_config/app.yml**
 
 
 ```yml
