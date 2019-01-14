@@ -329,6 +329,12 @@ class Session
 
             session_start($sessionParameters);
 
+            // Session start emits a cookie, but only if there's no existing session. If there is a session tied to
+            // this request, make sure the session is held for the entire timeout by refreshing the cookie age.
+            if ($this->requestContainsSessionId($request)) {
+                Cookie::set(session_name(), session_id(), $timeout / 86400, $path, $domain ?: null, $secure, true);
+            }
+
             if (isset($_SESSION)) {
                 // Initialise data from session store if present
                 $data = $_SESSION;
