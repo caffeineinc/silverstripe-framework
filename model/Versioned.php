@@ -491,16 +491,6 @@ class Versioned extends DataExtension implements TemplateGlobalProvider {
 					if($stage != $this->defaultStage) {
 						DB::require_table("{$table}_$stage", $fields, $indexes, false, $options);
 					}
-
-					// Version fields on each root table (including Stage)
-					/*
-					if($isRootClass) {
-						$stageTable = ($stage == $this->defaultStage) ? $table : "{$table}_$stage";
-						$parts=Array('datatype'=>'int', 'precision'=>11, 'null'=>'not null', 'default'=>(int)0);
-						$values=Array('type'=>'int', 'parts'=>$parts);
-						DB::requireField($stageTable, 'Version', $values);
-					}
-					*/
 				}
 
 				if($isRootClass) {
@@ -534,62 +524,6 @@ class Versioned extends DataExtension implements TemplateGlobalProvider {
 						),
 						(array)$indexes
 					);
-				}
-
-				if(DB::get_schema()->hasTable("{$table}_versions")) {
-					// Fix data that lacks the uniqueness constraint (since this was added later and bugs meant that
-					// the constraint was validated)
-					$duplications = DB::query("SELECT MIN(\"ID\") AS \"ID\", \"RecordID\", \"Version\"
-						FROM \"{$table}_versions\" GROUP BY \"RecordID\", \"Version\"
-						HAVING COUNT(*) > 1");
-
-					foreach($duplications as $dup) {
-						DB::alteration_message("Removing {$table}_versions duplicate data for "
-							."{$dup['RecordID']}/{$dup['Version']}" ,"deleted");
-						DB::prepared_query(
-							"DELETE FROM \"{$table}_versions\" WHERE \"RecordID\" = ?
-							AND \"Version\" = ? AND \"ID\" != ?",
-							array($dup['RecordID'], $dup['Version'], $dup['ID'])
-						);
-					}
-
-					// Remove junk which has no data in parent classes. Only needs to run the following when versioned
-					// data is spread over multiple tables
-					if(!$isRootClass && ($versionedTables = ClassInfo::dataClassesFor($table))) {
-
-						foreach($versionedTables as $child) {
-							if($table === $child) break; // only need subclasses
-
-							// Select all orphaned version records
-							$orphanedQuery = SQLSelect::create()
-								->selectField("\"{$table}_versions\".\"ID\"")
-								->setFrom("\"{$table}_versions\"");
-
-							// If we have a parent table limit orphaned records
-							// to only those that exist in this
-							if(DB::get_schema()->hasTable("{$child}_versions")) {
-								$orphanedQuery
-									->addLeftJoin(
-										"{$child}_versions",
-										"\"{$child}_versions\".\"RecordID\" = \"{$table}_versions\".\"RecordID\"
-										AND \"{$child}_versions\".\"Version\" = \"{$table}_versions\".\"Version\""
-									)
-									->addWhere("\"{$child}_versions\".\"ID\" IS NULL");
-							}
-
-							$count = $orphanedQuery->count();
-							if($count > 0) {
-								DB::alteration_message("Removing {$count} orphaned versioned records", "deleted");
-								$ids = $orphanedQuery->execute()->column();
-								foreach($ids as $id) {
-									DB::prepared_query(
-										"DELETE FROM \"{$table}_versions\" WHERE \"ID\" = ?",
-										array($id)
-									);
-								}
-							}
-						}
-					}
 				}
 
 				DB::require_table("{$table}_versions", $versionFields, $versionIndexes, true, $options);
@@ -1221,7 +1155,7 @@ class Versioned extends DataExtension implements TemplateGlobalProvider {
 		if (!$request) {
 			throw new InvalidArgumentException("Request not found");
 		}
-		
+
 		$mode = static::get_default_reading_mode();
 
         // Check any pre-existing session mode
